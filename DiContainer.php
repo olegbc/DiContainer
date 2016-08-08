@@ -1,22 +1,25 @@
 <?php
 
 include ('RelatedClassInterface.php');
+include ('UserProfile.php');
 include ('User.php');
 
 class DiContainer
 {
-    public $relatedClassParams = [];
-    public $mainClassName = '';
+    private $relatedClassParams = [];
+    private $relatedClassName = '';
+    private $mainClassName = '';
 
-    public function __construct($mainClassName, array $relatedClassParams = [])
+    public function __construct($mainClassName, $relatedClassName,  array $relatedClassParams = [])
     {
         $this->relatedClassParams = $relatedClassParams;
+        $this->relatedClassName = $relatedClassName;
         $this->mainClassName = $mainClassName;
     }
 
-    public function getRelatedClass()
+    private function getRelatedClass()
     {
-        $class = new $this->mainClassName;
+        $class = new $this->relatedClassName;
         foreach ($this->relatedClassParams as $key=>$val) {
             $class->$key = $val;
         }
@@ -33,11 +36,11 @@ class DiContainer
     }
 }
 
-$User = new DiContainer('User', ['firstName' => 'John', 'lastName' => 'Smith', 'email' => 'smith@gmail.com']);
+$diContainer = new DiContainer('User', 'UserProfile', ['firstName' => 'John', 'lastName' => 'Smith', 'email' => 'smith@gmail.com']);
 
-$User->getMainClass();
+$user = $diContainer->getMainClass();
 
-var_dump($User);
+var_dump($user);
 
 
 
