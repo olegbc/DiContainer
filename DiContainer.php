@@ -1,12 +1,12 @@
 <?php
 
-include ('RelatedClassInterface.php');
-include ('RelatedClassOne.php');
 include ('Container.php');
-include ('User.php');
 
 class DiContainer implements Container
 {
+    private $objectTypes = [];
+    private $childObjects;
+
     public static function getInstance()
     {
         return new static();
@@ -16,7 +16,6 @@ class DiContainer implements Container
     }
 
     private static $class;
-    //private  $relatedClassName = 'RelatedClassOne';
 
     public function get($class)
     {
@@ -26,18 +25,38 @@ class DiContainer implements Container
         return false;
     }
 
-    /**
-     * @param string $class
-     * @param array $arguments
-     * @return mixed
-     */
+    private function getChildren($class)
+    {
+        if(!class_exists($class)){
+            return;
+        }
+        $reflection = new ReflectionClass($class);
+        if (null === $reflection->getConstructor()){
+            return;
+        }
+        foreach ($reflection->getConstructor()->getParameters() as $parameter) {
+            if (null !== $parameter->getClass()){
+                $str =  $parameter->getClass()->getName();
+                $this->objectTypes[] = $str;
+                $this->getChildren($str);
+            }
+        }
+    }
+
     public function create($class, array $arguments = [])
     {
         if(is_null(self::$class)) {
-            $mainClassObject = new $class(new GuestUser(), $arguments);
-            $this->class = $mainClassObject;
-            //$mainClassObject->setRelatedClassDependencies($this->getRelatedClass());
-            return $mainClassObject;
+            $this->getChildren($class);
+            foreach (array_reverse($this->objectTypes) as $obj)
+            {
+                if (null === $this->childObjects) {
+                    $this->childObjects = new $obj;
+                } else {
+                    $this->childObjects = new $obj($this->childObjects);
+                }
+            }
+
+            return new $class($this->childObjects, $arguments['name'], $arguments['test']);
         }
 
         return self::$class;
@@ -52,7 +71,7 @@ class GuestUser {
      */
     private $bob;
 
-    public function __construct(Bob $bob, $name = 'guest')
+    public function __construct(Jon $bob, $name = 'guest')
     {
         $this->name = $name;
         $this->bob = $bob;
@@ -61,7 +80,6 @@ class GuestUser {
 }
 
 class TestUser {
-
     private $name;
     /**
      * @var GuestUser
@@ -69,7 +87,7 @@ class TestUser {
     private $sub;
     private $test;
 
-    public function __construct(GuestUser $sub, $name, $test)
+    public function __construct(Bob $sub, $name, $test)
     {
         $this->name = $name;
         $this->sub = $sub;
