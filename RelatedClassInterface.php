@@ -5,5 +5,5 @@
 
 interface RelatedClassInterface
 {
-    public function setRelatedClassDependency($relatedClass);
+    public function setRelatedClassDependencies($relatedClass);
 }

@@ -7,7 +7,7 @@ class User implements RelatedClassInterface
 {
     protected $relatedClass;
 
-    public function setRelatedClassDependency( $relatedClass) {
+    public function setRelatedClassDependencies($relatedClass) {
         $this->relatedClass = $relatedClass;
     }
 }
