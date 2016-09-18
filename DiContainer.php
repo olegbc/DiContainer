@@ -4,28 +4,23 @@ include ('Container.php');
 
 class DiContainer implements Container
 {
-    private $objectTypes = [];
+    private static $instance;
+    private $variablesNames;
+    private $mainArgs;
+    private $argsArray;
+    private $objectTypes;
+    private $objects;
     private $childObjects;
-
-    public static function getInstance()
-    {
-        return new static();
-    }
-    private function __construct()
-    {
-    }
-
-    private static $class;
 
     public function get($class)
     {
-        if(!is_null(self::$class)) {
-            return $this->class;
+        if(is_null(self::$instance)) {
+            $this->create($class);
         }
-        return false;
+        return self::$instance;
     }
 
-    private function getChildren($class)
+    private function getSignature($class)
     {
         if(!class_exists($class)){
             return;
@@ -34,35 +29,57 @@ class DiContainer implements Container
         if (null === $reflection->getConstructor()){
             return;
         }
+        if (null === $this->mainArgs) {
+            $this->mainArgs = $reflection->getConstructor()->getParameters();
+        }
         foreach ($reflection->getConstructor()->getParameters() as $parameter) {
             if (null !== $parameter->getClass()){
-                $str =  $parameter->getClass()->getName();
+                $str = $parameter->getClass()->getName();
                 $this->objectTypes[] = $str;
-                $this->getChildren($str);
+                $this->getSignature($str);
+                continue;
             }
+            $this->variablesNames[] = $parameter->getName();
         }
     }
 
     public function create($class, array $arguments = [])
     {
-        if(is_null(self::$class)) {
-            $this->getChildren($class);
-            foreach (array_reverse($this->objectTypes) as $obj)
-            {
-                if (null === $this->childObjects) {
-                    $this->childObjects = new $obj;
-                } else {
-                    $this->childObjects = new $obj($this->childObjects);
-                }
-            }
-
-            return new $class($this->childObjects, $arguments['name'], $arguments['test']);
+        if(!is_null(self::$instance)) {
+            return self::$instance;
         }
 
-        return self::$class;
+        $this->getSignature($class);
+        foreach (array_reverse($this->objectTypes) as $obj)
+        {
+            if (null === $this->childObjects) {
+                $this->childObjects = new $obj;
+            } else {
+                $this->childObjects = new $obj($this->childObjects);
+            }
+        }
+
+        if(!is_null(static::$instance)) {
+            return self::$instance;
+        }
+
+        $this->objects[] = $this->childObjects;
+        $objectIndex = 0;
+        $variableIndex = 0;
+        foreach ($this->mainArgs as $arg) {
+            /** $var ReflectionParameter $arg*/
+           if ($arg->getClass()) {
+               $this->argsArray[] = $this->objects[$objectIndex++];
+               continue;
+           }
+           $this->argsArray[] = $this->variablesNames[$variableIndex++];
+        }
+
+        $newClass = new ReflectionClass($class);
+        $shared = $newClass->newInstanceArgs($this->argsArray);
+        return self::$instance = $shared;
     }
 }
-
 
 class GuestUser {
     private $name;
@@ -87,7 +104,7 @@ class TestUser {
     private $sub;
     private $test;
 
-    public function __construct(Bob $sub, $name, $test)
+    public function __construct($name, Bob $sub, $test)
     {
         $this->name = $name;
         $this->sub = $sub;
@@ -109,17 +126,15 @@ class Bob {
 
 }
 
-class Jon {
+class Jon {}
 
-}
-
-$diContainer = DiContainer::getInstance();
+$diContainer = new DiContainer;
 
 $user = $diContainer->create(TestUser::class, ['test' => 123, 'name' => 'Bob']);
 $user2 = $diContainer->create(TestUser::class, ['test' => 888, 'name' => 'Jon']);
 
-var_dump($user); // Bob
-var_dump($user2); // Jon
+var_dump($user);
+var_dump($user2);
 
 
 
